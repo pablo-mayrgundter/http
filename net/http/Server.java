@@ -14,11 +14,17 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.WritableByteChannel;
 import java.net.Socket;
 import java.net.ServerSocket;
+import java.security.KeyStore;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.logging.Logger;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import javax.net.ServerSocketFactory;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLServerSocketFactory;
+import javax.security.cert.X509Certificate;
 
 
 /**
@@ -34,6 +40,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
  * one:
  *
  *   java -Dport=8080 net.http.Server
+ *   java -Dport=8080 -Dssl=true net.http.Server
  *
  * Loadtest using acme.com's http_load:
  *
@@ -56,7 +63,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
  *
  * @author Pablo Mayrgundter
  */
-public final class Server {
+public class Server {
 
   static final Logger logger = Logger.getLogger(Server.class.getName());
 
@@ -197,9 +204,14 @@ public final class Server {
     }
   }
 
+  final ServerSocketFactory serverSocketFactory;
+  Server(ServerSocketFactory serverSocketFactory) {
+    this.serverSocketFactory = serverSocketFactory;
+  }
+
   public void run() throws IOException {
     // Bind
-    ServerSocket ss = new ServerSocket(PORT);
+    final ServerSocket ss = serverSocketFactory.createServerSocket(PORT);
     Socket socket;
     while ((socket = ss.accept()) != null) {
       assert debug("Spawning worker thread: " + socket);
@@ -218,8 +230,22 @@ public final class Server {
     }
   }
 
-  public static void main(String [] args) throws IOException {
-    new Server().run();
+  // https://docs.oracle.com/javase/10/security/sample-code-illustrating-secure-socket-connection-client-and-server.htm
+  static ServerSocketFactory createSslServerSocketFactory(String keystoreFilename) throws Exception {
+    final SSLContext ctx = SSLContext.getInstance("TLS");
+    final KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
+    final KeyStore ks = KeyStore.getInstance("JKS");
+    final char [] passphrase = flags.get("keystorePassphrase", "passphrase").toCharArray();
+    ks.load(new FileInputStream(keystoreFilename), passphrase);
+    kmf.init(ks, passphrase);
+    ctx.init(kmf.getKeyManagers(), null, null);
+    return ctx.getServerSocketFactory();
+  }
+
+  public static void main(String [] args) throws Exception {
+    new Server(flags.get("ssl", "ssl", false) ?
+               createSslServerSocketFactory(flags.get("keystore"))
+               : ServerSocketFactory.getDefault()).run();
   }
 
   static final boolean debug(String s) {

@@ -1,68 +1,51 @@
 package util;
 
 /**
- * Helper class to assemble flags in bulk then check them once.
+ * Namespaced, fail-fast flags.
  * Usage:
  *
  *   // Required flags have no default specified.
- *   String first = Flags.get("first");
- *   String last = Flags.get("last");
- *   // Optional flags have are called with a default value, which can
- *   // be null.
- *   String middle = Flags.getOpt("middle", null);
- *   if (!Flags.check("Must specify first and last name.")) { return; }
- *
- * NOTE: See static init for shorthand definitions.
+ *   Flags flags = new Flags(Main.class);
+ *   String first = flags.get("first"); // -Dfirst=john
+ *   String last = flags.get("last"); // if unset, will throw IllegalArgumentException
  *
  * @author Pablo Mayrgundter
  */
 public class Flags {
 
-  static boolean flagsOk = true;
-
-  public static void clear() {
-    flagsOk = true;
-  }
-
-  public static boolean check(String msg) {
-    if (flagsOk) {
-      return true;
-    }
-    System.err.println(msg);
-    return false;
-  }
-
-  static String propName(Class clazz, String name) {
+  String propName(Class clazz, String name) {
     return clazz.getName() + "." + name;
   }
 
   // Boolean.
-  public static boolean bool(Class clazz, String name) {
+  public boolean bool(Class clazz, String name) {
     return Boolean.getBoolean(propName(clazz, name));
   }
 
   // String flags.
 
-  public static String get(String name) {
-    String val = System.getProperty(name);
+  public String get(String name) {
+    final String propName = propName(clazz, name);
+    final String val = get(propName, propName, null);
     if (val == null) {
-      flagsOk = false;
+      throw new IllegalArgumentException("Missing required flag: " + propName);
     }
-    return null;
+    return val;
   }
 
-  public static String get(String name, String defaultVal) {
-    return System.getProperty(name, defaultVal);
+  public String get(String name, String defaultVal) {
+    final String propName = propName(clazz, name);
+    return get(propName, propName, defaultVal);
   }
 
   // Int flags.
 
-  public static int getInt(String name) {
+  public int getInt(String name) {
     return Integer.parseInt(get(name, "0"));
   }
 
-  public static int getInt(String name, int defaultVal) {
-    String strVal = System.getProperty(name);
+  public int getInt(String name, int defaultVal) {
+    String strVal = get(name);
     if (strVal != null) {
       return Integer.parseInt(strVal);
     }
@@ -71,12 +54,12 @@ public class Flags {
 
   // Boolean flags.
 
-  public static boolean getBool(String name) {
+  public boolean getBool(String name) {
     return Boolean.parseBoolean(get(name, "false"));
   }
 
-  public static boolean getBool(String name, boolean defaultVal) {
-    String strVal = System.getProperty(name);
+  public boolean getBool(String name, boolean defaultVal) {
+    final String strVal = get(name);
     if (strVal != null) {
       return Boolean.parseBoolean(strVal);
     }
@@ -85,12 +68,12 @@ public class Flags {
 
   // Double flags.
 
-  public static double getDouble(String name) {
+  public double getDouble(String name) {
     return Double.parseDouble(get(name, "0"));
   }
 
-  public static double getDouble(String name, double defaultVal) {
-    String strVal = System.getProperty(name);
+  public double getDouble(String name, double defaultVal) {
+    final String strVal = get(name);
     if (strVal != null) {
       return Double.parseDouble(strVal);
     }
@@ -114,7 +97,7 @@ public class Flags {
    */
   @SuppressWarnings("unchecked")
   public <T> T get(String propName, String abbrevPropName, T defVal) {
-    String qName = clazz.getName() + "." + propName;
+    final String qName = propName(clazz, propName);
     String val = System.getProperty(qName);
 
     if (val == null && abbrevPropName != null) {
