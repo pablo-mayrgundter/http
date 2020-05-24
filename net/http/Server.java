@@ -69,6 +69,7 @@ public class Server {
 
   static final Flags flags = new Flags(Server.class);
   static final int PORT = flags.get("port", "port", 80);
+  static final boolean log = flags.get("log", "log", false);
 
   static ConcurrentLinkedDeque<Handler> idleHandlers = new ConcurrentLinkedDeque<Handler>();
 
@@ -110,7 +111,7 @@ public class Server {
         if (hdr.startsWith("GET")) {
           String [] parts = hdr.split(" ");
           if (parts.length < 3) {
-            responseHeaders(400, null);
+            responseHeaders("-", 400, null);
             return;
           }
           sendFile(parts[1]);
@@ -119,7 +120,7 @@ public class Server {
         e.printStackTrace();
         logger.warning("Connection service failed: " + e);
         try {
-          responseHeaders(500, null);
+          responseHeaders("-", 500, null);
         } catch (IOException ee) {
           ee.printStackTrace();
           logger.severe("Response 500 to client failed: " + ee);
@@ -134,7 +135,7 @@ public class Server {
       idleHandlers.push(this);
     }
 
-    void responseHeaders(int code, String mime, long ... contentLength) throws IOException {
+    void responseHeaders(String path, int code, String mime, long ... contentLength) throws IOException {
       String msg = "HTTP/1.0 " + code + " ";
       switch(code) {
         case 200: msg += "OK\r\n"; break;
@@ -150,9 +151,13 @@ public class Server {
       msg += "Cache-Control: private, max-age=0\r\n";
       msg += "Expires: -1\r\n";
       msg += "Server: yo\r\n";
-      msg += "Date: " + dateFormat.format(new Date()) + "\r\n";
+      final String serveDate = dateFormat.format(new Date());
+      msg += "Date: " + serveDate + "\r\n";
       msg += "\r\n";
       os.write(msg.getBytes());
+      if (log) {
+        System.out.printf("%s %d %s\n", serveDate, code, path);
+      }
     }
 
     String getMime(String filename) {
@@ -179,13 +184,13 @@ public class Server {
       try {
         raf = new RandomAccessFile(filename, "r");
       } catch (FileNotFoundException e) {
-        responseHeaders(404, mime, 0);
+        responseHeaders(filename, 404, mime, 0);
         return;
       }
       final long fileLen = raf.length();
       try (FileChannel fc = raf.getChannel();
            WritableByteChannel wbc = Channels.newChannel(os)) {
-        responseHeaders(200, mime, fileLen);
+          responseHeaders(filename, 200, mime, fileLen);
         long sentLen = 0;
         while (sentLen < fileLen) {
           sentLen += fc.transferTo(sentLen, fileLen - sentLen, wbc);
