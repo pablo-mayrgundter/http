@@ -3,6 +3,7 @@ package net.http;
 import util.Flags;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -70,6 +71,7 @@ public class Server {
   static final Flags flags = new Flags(Server.class);
   static final int PORT = flags.get("port", "port", 80);
   static final boolean log = flags.get("log", "log", false);
+  static final String indexFilename = flags.get("index", "index", "index.html");
 
   static ConcurrentLinkedDeque<Handler> idleHandlers = new ConcurrentLinkedDeque<Handler>();
 
@@ -111,6 +113,7 @@ public class Server {
         if (hdr.startsWith("GET")) {
           String [] parts = hdr.split(" ");
           if (parts.length < 3) {
+            System.out.println("Malformed header: " + hdr);
             responseHeaders("-", 400, null);
             return;
           }
@@ -156,7 +159,7 @@ public class Server {
       msg += "\r\n";
       os.write(msg.getBytes());
       if (log) {
-        System.out.printf("%s %d %s\n", serveDate, code, path);
+        System.out.printf("%s %d path(%s)\n%s\n\n", serveDate, code, path, msg);
       }
     }
 
@@ -177,14 +180,30 @@ public class Server {
     }
 
     void sendFile(String filename) throws IOException {
-      final String mime = getMime(filename);
-      filename = translateFilename(filename);
-      assert debug("Serving file: " + filename);
+      assert debug("sendFile: " + filename);
+      String mime = "text/html";
+      int code = 200;
+      File serveFile;
+      if (filename.equals("/")) {
+        serveFile = new File(indexFilename);
+        if (!serveFile.exists()) {
+          responseHeaders(filename, 403, mime);
+          return;
+        }
+        code = 302;
+      } else {
+        filename = translateFilename(filename);
+        serveFile = new File(filename);
+      }
+      if (!serveFile.exists()) {
+          responseHeaders(filename, 404, mime, 0);
+          return;
+      }
       RandomAccessFile raf = null;
       try {
-        raf = new RandomAccessFile(filename, "r");
-      } catch (FileNotFoundException e) {
-        responseHeaders(filename, 404, mime, 0);
+        raf = new RandomAccessFile(serveFile, "r");
+      } catch (IOException e) {
+        responseHeaders(filename, 500, mime, 0);
         return;
       }
       final long fileLen = raf.length();
