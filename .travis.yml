@@ -1,1 +1,2 @@
 language: java
+script: javac net/http/Serve.java
