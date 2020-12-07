@@ -159,7 +159,6 @@ public class Server {
       msg += "\r\n";
       os.write(msg.getBytes());
       if (log) {
-        System.out.println("YO!");
         System.out.printf("%s %d path(%s)\n%s\n\n", serveDate, code, path, msg);
       }
     }
@@ -169,7 +168,6 @@ public class Server {
       String type = "application/octet";
       if (parts.length > 0) {
         final String ftype = parts[parts.length - 1];
-        System.out.println("ftype: " + ftype);
         if (ftype.matches("(png|jpg|jpeg|gif|ico)")) {
           type = "image/" + ftype;
         } else if (ftype.matches("(html|xml|txt|css)")) {
