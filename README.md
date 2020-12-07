@@ -5,6 +5,9 @@ Handles only GET requests, serving files below the directory in which
 the server is started.  Does Content-Type inference based on file
 extensions (e.g. html, js, png, jpg).
 
+Currently disables any type of cacheing as I use it mostly for local
+development and want to avoid versioning mistakes.
+
 To run:
 ```
 java net.http.Server
