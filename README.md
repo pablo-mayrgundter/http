@@ -8,6 +8,8 @@ extensions (e.g. html, js, png, jpg).
 Currently disables any type of cacheing as I use it mostly for local
 development and want to avoid versioning mistakes.
 
+Also has fledgling SSL support that has occasionally worked.
+
 To run:
 ```
 java net.http.Server
