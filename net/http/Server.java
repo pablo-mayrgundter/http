@@ -194,13 +194,15 @@ public class Server {
       int code = 200;
       String mime;
       File serveFile;
-      if (filename.equals("/")) {
-        serveFile = new File(indexFilename);
+      if (filename.endsWith("/")) {
+        String maybeIndex = filename + indexFilename;
+        serveFile = new File("./" + maybeIndex);
         if (!serveFile.exists()) {
+          System.out.println(serveFile + " doesn't exist");
           responseHeaders(filename, 403, null);
           return;
         }
-        filename = "/" + indexFilename;
+        filename = maybeIndex;
         mime = getMime(filename);
         System.out.printf("mime(%s), filename(%s): ", mime, filename);
         code = 302;
