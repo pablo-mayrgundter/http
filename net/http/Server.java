@@ -142,8 +142,15 @@ public class Server {
       String msg = "HTTP/1.0 " + code + " ";
       switch(code) {
         case 200: msg += "OK\r\n"; break;
+        case 302:
+          msg += "Found\r\n";
+          msg += "Location: " + path + "\r\n";
+          break;
         case 400: msg += "Client error\r\n"; break;
+        case 403: msg += "Forbidden\r\n"; break;
         case 404: msg += "File not found\r\n"; break;
+        case 500: ;
+        default: msg += "Server error\r\n"; break;
       }
       if (contentLength.length != 0) {
         msg += "Content-Length: " + contentLength[0] + "\r\n";
@@ -184,18 +191,23 @@ public class Server {
 
     void sendFile(String filename) throws IOException {
       assert debug("sendFile: " + filename);
-      String mime = getMime(filename);
       int code = 200;
+      String mime;
       File serveFile;
       if (filename.equals("/")) {
         serveFile = new File(indexFilename);
         if (!serveFile.exists()) {
-          responseHeaders(filename, 403, mime);
+          responseHeaders(filename, 403, null);
           return;
         }
+        filename = "/" + indexFilename;
+        mime = getMime(filename);
+        System.out.printf("mime(%s), filename(%s): ", mime, filename);
         code = 302;
       } else {
         filename = translateFilename(filename);
+        mime = getMime(filename);
+        System.out.println("MIME: " + mime);
         serveFile = new File(filename);
       }
       if (!serveFile.exists()) {
@@ -212,7 +224,7 @@ public class Server {
       final long fileLen = raf.length();
       try (FileChannel fc = raf.getChannel();
            WritableByteChannel wbc = Channels.newChannel(os)) {
-          responseHeaders(filename, 200, mime, fileLen);
+          responseHeaders(filename, code, mime, fileLen);
         long sentLen = 0;
         while (sentLen < fileLen) {
           sentLen += fc.transferTo(sentLen, fileLen - sentLen, wbc);
