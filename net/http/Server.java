@@ -156,7 +156,7 @@ public class Server {
         msg += "Content-Length: " + contentLength[0] + "\r\n";
       }
       if (mime != null) {
-        msg += "Content-Type: " + mime + "; charset=UTF-8\r\n";
+        msg += "Content-Type: " + mime + "\r\n";
       }
       msg += "Cache-Control: private, max-age=0\r\n";
       msg += "Expires: -1\r\n";
@@ -170,7 +170,8 @@ public class Server {
       }
     }
 
-    String getMime(String filename) {
+
+    String getMimeAndCharset(String filename) {
       final String [] parts = filename.split("\\.");
       String type = "application/octet";
       if (parts.length > 0) {
@@ -178,12 +179,15 @@ public class Server {
         if (ftype.matches("(png|jpg|jpeg|gif|ico)")) {
           type = "image/" + ftype;
         } else if (ftype.matches("(html|xml|txt|css)")) {
-          type = "text/" + ftype;
+          type = "text/" + ftype + "; charset=UTF-8";
         } else if (ftype.matches("(js|mjs)")) {
-          type = "text/javascript";
+          type = "text/javascript" + "; charset=UTF-8";
         } else if (ftype.matches("json")) {
           // https://www.ietf.org/rfc/rfc4627.txt
-          type = "application/json";
+          type = "application/json" + "; charset=UTF-8";
+        } else if (ftype.matches("wasm")) {
+          // https://webassembly.org/docs/web/
+          type = "application/wasm";
         }
       }
       return type;
@@ -203,12 +207,12 @@ public class Server {
           return;
         }
         filename = maybeIndex;
-        mime = getMime(filename);
+        mime = getMimeAndCharset(filename);
         System.out.printf("mime(%s), filename(%s): ", mime, filename);
         code = 302;
       } else {
         filename = translateFilename(filename);
-        mime = getMime(filename);
+        mime = getMimeAndCharset(filename);
         System.out.println("MIME: " + mime);
         serveFile = new File(filename);
       }
