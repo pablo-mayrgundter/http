@@ -1,5 +1,5 @@
 # http
-A simple multi-threaded HTTP/1.0-ish file server. Single file, ~250 LOC.
+A simple multi-threaded HTTP/1.0-ish file server. Single file, 300 LOC.
 
 Handles only GET requests, serving files below the directory in which
 the server is started.  Does Content-Type inference based on file
